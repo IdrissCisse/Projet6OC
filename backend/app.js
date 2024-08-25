@@ -1,7 +1,14 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const booksRoutes = require('./routes/books');
 
 const app = express();
+
+mongoose.connect('mongodb+srv://aliouc140:0EncXZzawAQWXPeG@projet6oc.jwhww.mongodb.net/?retryWrites=true&w=majority&appName=Projet6OC',
+  { useNewUrlParser: true,
+    useUnifiedTopology: true })
+  .then(() => console.log('Connexion à MongoDB réussie !'))
+  .catch(() => console.log('Connexion à MongoDB échouée !'));
 
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');

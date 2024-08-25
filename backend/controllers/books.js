@@ -1,4 +1,4 @@
-const Book = require('route vers Book.js') 
+const Book = require('../models/Book') 
 
 exports.createBook = (req, res, next) => {
     delete req.body._id;
