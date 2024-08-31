@@ -1,13 +1,26 @@
+const fs = require('fs');
+const path = require('path');
+
 const Book = require('../models/Book') 
 
 exports.createBook = (req, res, next) => {
-    delete req.body._id;
+
+  console.log("req.body:", req.body); // Vérifiez le contenu de req.body
+    console.log("req.file:", req.file);
+    const bookObject = JSON.parse(req.body.book);
+    delete bookObject._id;
+    delete bookObject._userId;
     const book = new Book({
-      ...req.body
+      ...bookObject,
+      userId: req.auth.userId,
+      imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
+      averageRating: bookObject.averageRating || 0,
+      ratings: bookObject.ratings || [] 
     });
+ 
     book.save()
-    .then (() => res.status(201).json({ message: 'Livre enregistré !'}))
-    .catch(error => res.status(400).json({ error }));
+    .then(() => { res.status(201).json({message: 'Livre enregistré'})})
+    .catch(error => { res.status(400).json( { error })})
 };
 
   exports.getAllBooks = (req, res) => {
@@ -31,7 +44,24 @@ exports.getBestRating = (req, res, next) => {
 };
 
 exports.deleteBook = (req, res, next) => {
-  Book.deleteOne({ _id: req.params.id })
-  .then(() => res.status(200).json({ message: 'Livre supprimé !'}))
-  .catch(error => res.status(400).json({ error }));
+  Book.findOne({ _id: req.params.id })
+  .then(book => {
+    if (!book) {
+      return res.status(404).json({ message: 'Livre non trouvé !' });
+    }
+    Book.deleteOne({ _id: req.params.id })
+      .then(() => {
+        const imagePath = path.join(__dirname, '../images', path.basename(book.imageUrl));
+        fs.unlink(imagePath, (err) => {
+          if (err) {
+            console.error('Erreur lors de la suppression de l\'image:', err);
+          } else {
+            console.log('Image supprimée avec succès.');
+          }
+        });
+        res.status(200).json({ message: 'Livre et image supprimés !' });
+      })
+      .catch(error => res.status(400).json({ error }));
+  })
+  .catch(error => res.status(500).json({ error }));
 };
