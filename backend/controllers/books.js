@@ -4,10 +4,7 @@ const path = require('path');
 const Book = require('../models/Book') 
 
 exports.createBook = (req, res, next) => {
-
-  console.log("req.body:", req.body); // Vérifiez le contenu de req.body
-    console.log("req.file:", req.file);
-    const bookObject = JSON.parse(req.body.book);
+  const bookObject = JSON.parse(req.body.book);
     delete bookObject._id;
     delete bookObject._userId;
     const book = new Book({
