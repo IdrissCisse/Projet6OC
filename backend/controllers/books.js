@@ -62,3 +62,44 @@ exports.deleteBook = (req, res, next) => {
   })
   .catch(error => res.status(500).json({ error }));
 };
+
+exports.modifyBook = (req, res, next) => {
+  Book.findOne({ _id: req.params.id })
+    .then(book => {
+      if (!book) {
+        return res.status(404).json({ message: 'Livre non trouvé !' });
+      }
+
+      let updatedBookData;
+
+      if (req.file) {
+        const oldImagePath = path.join(__dirname, '../images', book.imageUrl.split('/images/')[1]);
+
+        fs.unlink(oldImagePath, err => {
+          if (err) {
+            return res.status(500).json({ message: 'Erreur lors de la suppression de l\'ancienne image' });
+          }
+
+          updatedBookData = {
+            ...JSON.parse(req.body.book),
+            imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`, 
+            _id: req.params.id
+          };
+
+          Book.updateOne({ _id: req.params.id }, updatedBookData)
+            .then(() => res.status(200).json({ message: 'Livre modifié !' }))
+            .catch(error => res.status(400).json({ error }));
+        });
+      } else {
+        updatedBookData = {
+          ...JSON.parse(req.body.book),
+          _id: req.params.id
+        };
+
+        Book.updateOne({ _id: req.params.id }, updatedBookData)
+          .then(() => res.status(200).json({ message: 'Livre modifié !' }))
+          .catch(error => res.status(400).json({ error }));
+      }
+    })
+    .catch(error => res.status(500).json({ error }));
+};
