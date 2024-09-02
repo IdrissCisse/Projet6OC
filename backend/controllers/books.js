@@ -72,34 +72,40 @@ exports.modifyBook = (req, res, next) => {
 
       let updatedBookData;
 
-      if (req.file) {
-        const oldImagePath = path.join(__dirname, '../images', book.imageUrl.split('/images/')[1]);
+      try {
+        if (req.file) {
+          const bookData = JSON.parse(req.body.book);
 
-        fs.unlink(oldImagePath, err => {
-          if (err) {
-            return res.status(500).json({ message: 'Erreur lors de la suppression de l\'ancienne image' });
-          }
+          const oldImagePath = path.join(__dirname, '../images', book.imageUrl.split('/images/')[1]);
 
+          fs.unlink(oldImagePath, err => {
+            if (err) {
+              return res.status(500).json({ message: 'Erreur lors de la suppression de l\'ancienne image' });
+            }
+
+            updatedBookData = {
+              ...bookData,
+              imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`, 
+              _id: req.params.id
+            };
+
+            Book.updateOne({ _id: req.params.id }, updatedBookData)
+              .then(() => res.status(200).json({ message: 'Livre modifié avec la nouvelle image !' }))
+              .catch(error => res.status(400).json({ error }));
+          });
+        } else {
           updatedBookData = {
-            ...JSON.parse(req.body.book),
-            imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`, 
+            ...req.body, 
             _id: req.params.id
           };
 
           Book.updateOne({ _id: req.params.id }, updatedBookData)
-            .then(() => res.status(200).json({ message: 'Livre modifié !' }))
-            .catch(error => res.status(400).json({ error }));
-        });
-      } else {
-        updatedBookData = {
-          ...JSON.parse(req.body.book),
-          _id: req.params.id
-        };
-
-        Book.updateOne({ _id: req.params.id }, updatedBookData)
-          .then(() => res.status(200).json({ message: 'Livre modifié !' }))
-          .catch(error => res.status(400).json({ error }));
+            .then(() => res.status(200).json({ message: 'Livre modifié sans nouvelle image !' }))
+            .catch(error => res.status(400).json({ message: 'Erreur lors de la modification du livre' }));
+        }
+      } catch (error) {
+        return res.status(400).json({ message: 'Données du livre incorrectes' });
       }
     })
-    .catch(error => res.status(500).json({ error }));
+    .catch(error => res.status(500).json({ message: 'Erreur serveur ou livre non trouvé' }));
 };
