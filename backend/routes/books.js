@@ -5,6 +5,8 @@ const { upload, optimizeImage } = require('../middleware/multer-config');
 
 const router = express.Router();
 
+router.post('/:id/rating', auth, booksCtrl.rateBook);
+
 router.post('/', auth,  upload, optimizeImage, booksCtrl.createBook);
 
 router.delete('/:id', auth, booksCtrl.deleteBook);

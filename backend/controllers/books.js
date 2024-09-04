@@ -77,7 +77,7 @@ exports.modifyBook = (req, res, next) => {
           const bookData = JSON.parse(req.body.book);
 
           const oldImagePath = path.join(__dirname, '../images', book.imageUrl.split('/images/')[1]);
-
+ 
           fs.unlink(oldImagePath, err => {
             if (err) {
               return res.status(500).json({ message: 'Erreur lors de la suppression de l\'ancienne image' });
@@ -108,4 +108,46 @@ exports.modifyBook = (req, res, next) => {
       }
     })
     .catch(error => res.status(500).json({ message: 'Erreur serveur ou livre non trouvé' }));
+};
+
+exports.rateBook = (req, res, next) => {
+  const { userId, rating } = req.body;
+
+  // Vérifiez si les données sont présentes et valides
+  if (!userId || rating === undefined) {
+      return res.status(400).json({ message: 'User ID et rating sont requis.' });
+  }
+
+  if (rating < 0 || rating > 5) {
+      return res.status(400).json({ message: 'La note doit être comprise entre 0 et 5.' });
+  }
+
+  Book.findOne({ _id: req.params.id })
+      .then(book => {
+          if (!book) {
+              return res.status(404).json({ message: 'Livre non trouvé !' });
+          }
+
+          const existingRating = book.ratings.find(r => r.userId === userId);
+          if (existingRating) {
+              return res.status(400).json({ message: 'Vous avez déjà noté ce livre.' });
+          }
+
+          const newRating = { userId, grade: rating };
+          book.ratings.push(newRating);
+
+          const totalRatings = book.ratings.reduce((sum, r) => sum + r.grade, 0);
+          book.averageRating = totalRatings / book.ratings.length;
+
+          return book.save()
+              .then(updatedBook => res.status(200).json(updatedBook))
+              .catch(error => {
+                  console.error('Erreur lors de la sauvegarde du livre:', error);
+                  res.status(400).json({ error });
+              });
+      })
+      .catch(error => {
+          console.error('Erreur lors de la recherche du livre:', error);
+          res.status(500).json({ error });
+      });
 };
