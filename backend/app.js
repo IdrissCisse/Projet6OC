@@ -1,17 +1,25 @@
+require('dotenv').config();
+const helmet = require('helmet');
 const express = require('express');
 const mongoose = require('mongoose');
 const booksRoutes = require('./routes/books');
 const userRoutes = require('./routes/user');
+const apiLimiter = require('./middleware/rateLimit');
 
 const app = express();
 
-mongoose.connect('mongodb+srv://aliouc140:0EncXZzawAQWXPeG@projet6oc.jwhww.mongodb.net/?retryWrites=true&w=majority&appName=Projet6OC',
-  { useNewUrlParser: true,
-    useUnifiedTopology: true })
+mongoose.connect(process.env.DATABASE_URL, { 
+  useNewUrlParser: true,
+  useUnifiedTopology: true 
+})
   .then(() => console.log('Connexion à MongoDB réussie !'))
   .catch(() => console.log('Connexion à MongoDB échouée !'));
 
-  app.use(express.json());
+  app.use(helmet({
+    crossOriginResourcePolicy: {
+      policy: 'cross-origin'
+    }
+  }));
 
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,8 +28,14 @@ app.use((req, res, next) => {
     next();
   });
 
+app.use('/api/', apiLimiter);
+
+app.use('/images', express.static('images'));
+
+app.use(express.json());
+
 app.use('/api/books', booksRoutes); 
 app.use('/api/auth', userRoutes);
-app.use('/images', express.static('images'));
+
 
 module.exports = app;
