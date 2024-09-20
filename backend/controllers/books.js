@@ -15,21 +15,21 @@ exports.createBook = (req, res, next) => {
       ratings: bookObject.ratings || [] 
     });
  
-    book.save()
-    .then(() => { res.status(201).json({message: 'Livre enregistré'})})
-    .catch(error => { res.status(400).json( { error })})
+    book.save() 
+    .then(() => { res.status(201).json({message: 'Livre enregistré avec succés'})})
+    .catch(error => { res.status(400).json({message: 'Erreur lors de l\'enregistrement du livre', error })})
 };
 
   exports.getAllBooks = (req, res) => {
     Book.find()
     .then(books => res.status(200).json(books))
-    .catch(error => res.status(400).json({ error }))
+    .catch(error => res.status(400).json({message: 'Erreur lors de la récupération des livres', error }))
 };
 
 exports.getOneBook = (req, res, next) => {
   Book.findOne({ _id: req.params.id})
   .then(book => res.status(200).json(book))
-  .catch(error => res.status(404).json ({ error }));
+  .catch(error => res.status(404).json ({message: 'Erreur lors de la récupération de livre', error }));
 };  
 
 exports.getBestRating = (req, res, next) => {
@@ -37,15 +37,20 @@ exports.getBestRating = (req, res, next) => {
     .sort({ averageRating: -1 }) 
     .limit(3)
     .then(books => res.status(200).json(books)) 
-    .catch(error => res.status(400).json({ error })); 
+    .catch(error => res.status(400).json({ message: 'Erreur lors de la récupération des livres les mieux notés', error })); 
 };
 
 exports.deleteBook = (req, res, next) => {
   Book.findOne({ _id: req.params.id })
   .then(book => {
     if (!book) {
-      return res.status(404).json({ message: 'Livre non trouvé !' });
+      return res.status(404).json({ message: 'Livre introuvable !' });
     }
+
+    if (book.userId !== req.auth.userId) {
+      return res.status(403).json({ message: 'Requête non autorisée : vous n\'êtes pas le propriétaire de ce livre' });
+    }
+    
     Book.deleteOne({ _id: req.params.id })
       .then(() => {
         const imagePath = path.join(__dirname, '../images', path.basename(book.imageUrl));
@@ -58,16 +63,20 @@ exports.deleteBook = (req, res, next) => {
         });
         res.status(200).json({ message: 'Livre et image supprimés !' });
       })
-      .catch(error => res.status(400).json({ error }));
+      .catch(error => res.status(400).json({message: 'Erreur lors de la suppression du livre', error }));
   })
-  .catch(error => res.status(500).json({ error }));
+  .catch(error => res.status(500).json({message: 'Livre introuvable !', error }));
 };
 
 exports.modifyBook = (req, res, next) => {
   Book.findOne({ _id: req.params.id })
     .then(book => {
       if (!book) {
-        return res.status(404).json({ message: 'Livre non trouvé !' });
+        return res.status(404).json({ message: 'Livre introuvable !' });
+      }
+
+      if (book.userId !== req.auth.userId) {
+        return res.status(403).json({ message: 'Requête non autorisée : vous n\'êtes pas le propriétaire de ce livre' });
       }
 
       let updatedBookData;
@@ -91,7 +100,7 @@ exports.modifyBook = (req, res, next) => {
 
             Book.updateOne({ _id: req.params.id }, updatedBookData)
               .then(() => res.status(200).json({ message: 'Livre modifié avec la nouvelle image !' }))
-              .catch(error => res.status(400).json({ error }));
+              .catch(error => res.status(400).json({ message: 'Erreur lors de la modification ', error }));
           });
         } else {
           updatedBookData = {
@@ -101,19 +110,18 @@ exports.modifyBook = (req, res, next) => {
 
           Book.updateOne({ _id: req.params.id }, updatedBookData)
             .then(() => res.status(200).json({ message: 'Livre modifié sans nouvelle image !' }))
-            .catch(error => res.status(400).json({ message: 'Erreur lors de la modification du livre' }));
+            .catch(error => res.status(400).json({message: 'Erreur lors de la modification du livre', error }));
         }
       } catch (error) {
         return res.status(400).json({ message: 'Données du livre incorrectes' });
       }
     })
-    .catch(error => res.status(500).json({ message: 'Erreur serveur ou livre non trouvé' }));
+    .catch(error => res.status(500).json({message: 'Livre introuvable !', error }));
 };
 
 exports.rateBook = (req, res, next) => {
   const { userId, rating } = req.body;
 
-  // Vérifiez si les données sont présentes et valides
   if (!userId || rating === undefined) {
       return res.status(400).json({ message: 'User ID et rating sont requis.' });
   }
@@ -125,7 +133,7 @@ exports.rateBook = (req, res, next) => {
   Book.findOne({ _id: req.params.id })
       .then(book => {
           if (!book) {
-              return res.status(404).json({ message: 'Livre non trouvé !' });
+              return res.status(404).json({ message: 'Livre introuvable !' });
           }
 
           const existingRating = book.ratings.find(r => r.userId === userId);
@@ -141,13 +149,8 @@ exports.rateBook = (req, res, next) => {
 
           return book.save()
               .then(updatedBook => res.status(200).json(updatedBook))
-              .catch(error => {
-                  console.error('Erreur lors de la sauvegarde du livre:', error);
-                  res.status(400).json({ error });
-              });
+              .catch(error => res.status(400).json({message: 'Erreur lors de la sauvegarde du livre:', error }));
       })
-      .catch(error => {
-          console.error('Erreur lors de la recherche du livre:', error);
-          res.status(500).json({ error });
-      });
+      .catch(error => res.status(400).json({message: 'Livre introuvable !', error })
+    );
 };
