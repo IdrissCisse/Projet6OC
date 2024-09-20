@@ -50,7 +50,7 @@ exports.deleteBook = (req, res, next) => {
     if (book.userId !== req.auth.userId) {
       return res.status(403).json({ message: 'Requête non autorisée : vous n\'êtes pas le propriétaire de ce livre' });
     }
-    
+
     Book.deleteOne({ _id: req.params.id })
       .then(() => {
         const imagePath = path.join(__dirname, '../images', path.basename(book.imageUrl));
@@ -145,8 +145,8 @@ exports.rateBook = (req, res, next) => {
           book.ratings.push(newRating);
 
           const totalRatings = book.ratings.reduce((sum, r) => sum + r.grade, 0);
-          book.averageRating = totalRatings / book.ratings.length;
-
+          book.averageRating = parseFloat((totalRatings / book.ratings.length).toFixed(1));
+          
           return book.save()
               .then(updatedBook => res.status(200).json(updatedBook))
               .catch(error => res.status(400).json({message: 'Erreur lors de la sauvegarde du livre:', error }));
